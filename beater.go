@@ -8,21 +8,21 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 )
 
-// HeartBeat is a method that can check whether the endpoint is working
+// HeartbeatFn is a method that can check whether the endpoint is working
 // or not. Since it is not possible to specify which service endpoint it
 // is, it is appropriately injected from the outside according to the usage.
 type HeartbeatFn func(ctx context.Context, endpoint string) error
 
-func DefaultHeartbeatFn(ctx context.Context, endpoint string) (*ethclient.Client, error) {
+func DefaultHeartbeatFn(ctx context.Context, endpoint string) error {
 	// context.WithTimeout has no effect on DialContext.
 	client, err := ethclient.DialContext(ctx, endpoint)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	// It is recommended to make at least one rpc call.
 	_, err = client.ChainID(ctx)
-	return client, err
+	return err
 }
 
 // Beater manages the status list by examining whether the endpoints

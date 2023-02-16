@@ -32,8 +32,7 @@ func TestDefaultHeartbeatFn(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond)
 		defer cancel()
 
-		_, err := DefaultHeartbeatFn(ctx, test.endpoint)
-		if err == nil {
+		if err := DefaultHeartbeatFn(ctx, test.endpoint); err == nil {
 			t.Fatalf("want: %v got: %v", test.succeed, false)
 		}
 	}
@@ -42,7 +41,7 @@ func TestDefaultHeartbeatFn(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
-		_, err := DefaultHeartbeatFn(ctx, test.endpoint)
+		err := DefaultHeartbeatFn(ctx, test.endpoint)
 		if err == nil && !test.succeed {
 			t.Fatalf("want: %v got: %v", test.succeed, err == nil)
 		}
