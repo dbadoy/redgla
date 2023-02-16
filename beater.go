@@ -137,3 +137,10 @@ func (b *beater) liveNodes() []string {
 
 	return endpoints
 }
+
+func (b *beater) liveNodesWithSpentTime() map[string]time.Duration {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+
+	return b.members
+}
