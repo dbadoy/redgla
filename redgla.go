@@ -1,7 +1,9 @@
 package redgla
 
 import (
+	"context"
 	"errors"
+	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -77,10 +79,34 @@ func (r *Redgla) dial(endpoints []string) ([]*ethclient.Client, error) {
 	return res, nil
 }
 
-func blockByNumber(node *ethclient.Client, start uint64, end uint64) (map[uint64]*types.Block, error) {
-	panic("")
+func blockByNumber(client *ethclient.Client, start uint64, end uint64) (map[uint64]*types.Block, error) {
+	var (
+		res = make(map[uint64]*types.Block, end-start)
+		err error
+	)
+
+	for ; start <= end; start++ {
+		res[start], err = client.BlockByNumber(context.Background(), big.NewInt(int64(start)))
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return res, nil
 }
 
-func receiptByTxs(node *ethclient.Client, txs []*types.Transaction) (map[common.Hash]*types.Receipt, error) {
-	panic("")
+func receiptByTxs(client *ethclient.Client, txs []*types.Transaction) (map[common.Hash]*types.Receipt, error) {
+	var (
+		res = make(map[common.Hash]*types.Receipt, len(txs))
+		err error
+	)
+
+	for _, tx := range txs {
+		res[tx.Hash()], err = client.TransactionReceipt(context.Background(), tx.Hash())
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return res, nil
 }
