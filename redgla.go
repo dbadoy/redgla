@@ -51,7 +51,7 @@ func (r *Redgla) DelNode(endpoint string) error {
 // Removing nodes that are too slow to respond from the list can help
 // improve performance.
 // This method performs a benchmark for requests to fetch 'cnt' times a
-// random number of block numbers less than 'height.
+// random number of block numbers less than 'height'.
 func (r *Redgla) Benchmark(height uint64, cnt int) (map[string]time.Duration, error) {
 	nodes := r.list.liveNodes()
 	if len(nodes) == 0 {
