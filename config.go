@@ -9,6 +9,7 @@ import (
 
 const (
 	defaultThreshold         = 100
+	defaultRequestTimeout    = 5 * time.Minute
 	defaultHeartbeatInterval = 3 * time.Second
 	defaultHeartbeatTimeout  = time.Second
 )
@@ -26,6 +27,8 @@ type Config struct {
 	// Threshold to send a batch request. If the number of requests is
 	// greater than the value, they are converted to batch requests.
 	Threshold int
+
+	RequestTimeout time.Duration
 
 	// Ping interval for checks alive endpoints.
 	HeartbeatInterval time.Duration
