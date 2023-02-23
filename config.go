@@ -49,6 +49,7 @@ type Config struct {
 // on the created default Config.
 func DefaultConfig() *Config {
 	return &Config{
+		Endpoints:         make([]string, 0),
 		Threshold:         defaultThreshold,
 		RequestTimeout:    defaultRequestTimeout,
 		HeartbeatInterval: defaultHeartbeatInterval,
