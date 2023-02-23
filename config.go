@@ -89,6 +89,10 @@ func validateEndpoint(endpoint string) error {
 		return fmt.Errorf("%s: %w", endpoint, errInvalidEndpoint)
 	}
 
+	// Websocket have not yet been considered, so disconnects are not properly
+	// handled, which can adversely affect nodes.
+	//
+	// Restrict before supporting it.
 	if url.Scheme == "ws" || url.Scheme == "wss" {
 		return errors.New("websockets are currently not supported")
 	}
