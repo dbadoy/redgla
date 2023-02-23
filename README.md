@@ -3,6 +3,9 @@ Scalable Ethereum Read Requester
 
 <img width="728" alt="image" src="https://user-images.githubusercontent.com/72970043/220929311-99e7b45b-5ca1-4933-b241-d30bee6ff987.png">
 
+redgla stores multiple Ethereum client endpoints, and if more than the specified number of requests are received, the requests are equally divided and sent, and the results are combined and returned to the client. See the [Scalable](https://github.com/dbadoy/redgla/edit/main/README.md#scalable).
+
+
 <b>Table of Contents</b>
 
 - [Install](https://github.com/dbadoy/redgla#install)
