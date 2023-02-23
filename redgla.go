@@ -10,6 +10,7 @@ import (
 	"errors"
 	"math/big"
 	"math/rand"
+	"sync/atomic"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -23,6 +24,8 @@ var (
 )
 
 type Redgla struct {
+	isRun uint32
+
 	list *beater
 	cfg  *Config
 }
@@ -30,6 +33,41 @@ type Redgla struct {
 type benchmarkMsg struct {
 	endpoint string
 	spent    time.Duration
+}
+
+func New(fn HeartbeatFn, cfg *Config) (*Redgla, error) {
+	if fn == nil {
+		fn = DefaultHeartbeatFn
+	}
+
+	if cfg == nil {
+		return nil, errors.New("Config must not be nil")
+	}
+
+	if err := cfg.validate(); err != nil {
+		return nil, err
+	}
+
+	beater, err := newBeater("beater", cfg.Endpoints, fn, cfg.HeartbeatInterval, cfg.HeartbeatTimeout)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Redgla{0, beater, cfg}, nil
+}
+
+func (r *Redgla) Run() {
+	if atomic.LoadUint32(&r.isRun) == 0 {
+		r.list.run()
+		atomic.StoreUint32(&r.isRun, 1)
+	}
+}
+
+func (r *Redgla) Stop() {
+	if atomic.LoadUint32(&r.isRun) == 1 {
+		r.list.stop()
+		atomic.StoreUint32(&r.isRun, 0)
+	}
 }
 
 // AddNode adds the target endpoint to the list of batch processing nodes.
