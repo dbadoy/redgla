@@ -224,7 +224,6 @@ func makeBatchIndex(requests int, clients int) [][2]int {
 		accum = next
 
 		r = append(r, m)
-
 		if accum == requests {
 			return r
 		}
