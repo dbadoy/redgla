@@ -84,8 +84,13 @@ func (c *Config) validate() error {
 }
 
 func validateEndpoint(endpoint string) error {
-	if _, err := url.ParseRequestURI(endpoint); err != nil {
+	url, err := url.ParseRequestURI(endpoint)
+	if err != nil {
 		return fmt.Errorf("%s: %w", endpoint, errInvalidEndpoint)
+	}
+
+	if url.Scheme == "ws" || url.Scheme == "wss" {
+		return errors.New("websockets are currently not supported")
 	}
 
 	return nil
