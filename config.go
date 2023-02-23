@@ -9,15 +9,15 @@ import (
 
 const (
 	defaultThreshold         = 100
-	defaultRequestTimeout    = 5 * time.Minute
+	defaultRequestTimeout    = 30 * time.Minute // See Config.RequestTimeout comment
 	defaultHeartbeatInterval = 3 * time.Second
 	defaultHeartbeatTimeout  = time.Second
 )
 
 var (
-	errInvalidInterval = errors.New("invalid heartbeat interval")
-	errInvalidTimeout  = errors.New("invalid heartbeat timeout")
 	errInvalidEndpoint = errors.New("invalid endpoint")
+	errInvalidInterval = errors.New("invalid heartbeat interval")
+	errInvalidTimeout  = errors.New("invalid timeout")
 )
 
 type Config struct {
@@ -28,6 +28,9 @@ type Config struct {
 	// greater than the value, they are converted to batch requests.
 	Threshold int
 
+	// This is the timeout of the request to the Ethereum node. It also
+	// seems okay to give a very large value and rely on the Ethereum
+	// node's request timeout.
 	RequestTimeout time.Duration
 
 	// Ping interval for checks alive endpoints.
@@ -40,6 +43,7 @@ type Config struct {
 func DefaultConfig() *Config {
 	return &Config{
 		Threshold:         defaultThreshold,
+		RequestTimeout:    defaultRequestTimeout,
 		HeartbeatInterval: defaultHeartbeatInterval,
 		HeartbeatTimeout:  defaultHeartbeatTimeout,
 	}
@@ -54,6 +58,10 @@ func (c *Config) validate() error {
 		if err := validateEndpoint(endpoint); err != nil {
 			return err
 		}
+	}
+
+	if c.RequestTimeout == 0 {
+		return errInvalidTimeout
 	}
 
 	if c.HeartbeatInterval == 0 {
