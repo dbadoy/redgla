@@ -8,21 +8,22 @@ import (
 )
 
 // Internal messages.
+// temp
 
-type benchmarkMsg struct {
+type msg struct {
 	endpoint string
 	err      error
-	spent    time.Duration
+	v        interface{}
 }
 
-type blockMsg struct {
-	endpoint string
-	err      error
-	res      map[uint64]*types.Block
+func (m *msg) benchmarkResponse() time.Duration {
+	return m.v.(time.Duration)
 }
 
-type receiptMsg struct {
-	endpoint string
-	err      error
-	res      map[common.Hash]*types.Receipt
+func (m *msg) blockResponse() map[uint64]*types.Block {
+	return m.v.(map[uint64]*types.Block)
+}
+
+func (m *msg) receiptResponse() map[common.Hash]*types.Receipt {
+	return m.v.(map[common.Hash]*types.Receipt)
 }
