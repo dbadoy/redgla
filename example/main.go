@@ -10,6 +10,8 @@ import (
 func main() {
 	cfg := redgla.DefaultConfig()
 	cfg.Threshold = 5
+	
+	// https://chainlist.org/chain/1
 	cfg.Endpoints = append(cfg.Endpoints, "https://rpc.ankr.com/eth", "https://eth.llamarpc.com", "https://api.securerpc.com/v1")
 
 	redgla, err := redgla.New(redgla.DefaultHeartbeatFn, cfg)
