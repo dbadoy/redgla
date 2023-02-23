@@ -116,8 +116,8 @@ func (r *Redgla) Benchmark(height uint64, cnt int) (map[string]time.Duration, er
 					resc <- nil
 					return
 				}
-				resc <- &benchmarkMsg{endpoint, time.Since(start)}
 			}
+			resc <- &benchmarkMsg{endpoint, time.Since(start)}
 		}(clients[i], nodes[i])
 	}
 
