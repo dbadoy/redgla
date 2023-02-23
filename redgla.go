@@ -8,6 +8,7 @@ package redgla
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math/big"
 	"math/rand"
 	"sync/atomic"
@@ -28,11 +29,6 @@ type Redgla struct {
 
 	list *beater
 	cfg  *Config
-}
-
-type benchmarkMsg struct {
-	endpoint string
-	spent    time.Duration
 }
 
 func New(fn HeartbeatFn, cfg *Config) (*Redgla, error) {
@@ -113,20 +109,20 @@ func (r *Redgla) Benchmark(height uint64, cnt int) (map[string]time.Duration, er
 			for i := 0; i < cnt; i++ {
 				_, err := client.BlockByNumber(context.Background(), big.NewInt(randBN))
 				if err != nil {
-					resc <- nil
+					resc <- &benchmarkMsg{endpoint, err, 0}
 					return
 				}
 			}
-			resc <- &benchmarkMsg{endpoint, time.Since(start)}
+			resc <- &benchmarkMsg{endpoint, nil, time.Since(start)}
 		}(clients[i], nodes[i])
 	}
 
 	for i := 0; i < cap(resc); i++ {
-		r := <-resc
-		if r == nil {
-			return nil, errors.New("some request failed during benchmark")
+		res := <-resc
+		if res.err != nil {
+			return nil, fmt.Errorf("%w: %s (%s)", res.err, res.endpoint, "some request failed during benchmark")
 		}
-		result[r.endpoint] = r.spent
+		result[res.endpoint] = res.spent
 	}
 
 	return result, nil
@@ -170,29 +166,29 @@ func (r *Redgla) BlockByRangeWithBatch(start uint64, end uint64) (map[uint64]*ty
 	}
 
 	var (
-		resc   = make(chan map[uint64]*types.Block, len(nodes))
+		resc   = make(chan *blockMsg, len(nodes))
 		result = make(map[uint64]*types.Block, end-start)
 	)
 
 	ranges := makeBatchRange(start, end, len(nodes))
 	for i, rg := range ranges {
-		go func(client *ethclient.Client, start uint64, end uint64) {
+		go func(client *ethclient.Client, endpoint string, start uint64, end uint64) {
 			r, err := blockByNumber(client, start, end, r.cfg.RequestTimeout)
 			if err != nil {
-				resc <- nil
+				resc <- &blockMsg{endpoint, err, nil}
 				return
 			}
-			resc <- r
-		}(clients[i], rg[0], rg[1])
+			resc <- &blockMsg{endpoint, nil, r}
+		}(clients[i], nodes[i], rg[0], rg[1])
 	}
 
 	for i := 0; i < cap(resc); i++ {
 		res := <-resc
-		if res == nil {
-			return nil, errors.New("request failed during batch operation")
+		if res.err != nil {
+			return nil, fmt.Errorf("%w: %s (%s)", res.err, res.endpoint, "request failed during batch operation")
 		}
 
-		for k, v := range res {
+		for k, v := range res.res {
 			result[k] = v
 		}
 	}
@@ -239,29 +235,29 @@ func (r *Redgla) ReceiptByTxsWithBatch(txs []*types.Transaction) (map[common.Has
 	}
 
 	var (
-		resc   = make(chan map[common.Hash]*types.Receipt, len(nodes))
+		resc   = make(chan *receiptMsg, len(nodes))
 		result = make(map[common.Hash]*types.Receipt, len(txs))
 	)
 
 	indices := makeBatchIndex(len(txs), len(nodes))
 	for i, index := range indices {
-		go func(client *ethclient.Client, txs []*types.Transaction) {
+		go func(client *ethclient.Client, endpoint string, txs []*types.Transaction) {
 			r, err := receiptByTxs(client, txs, r.cfg.RequestTimeout)
 			if err != nil {
-				resc <- nil
+				resc <- &receiptMsg{endpoint, err, nil}
 				return
 			}
-			resc <- r
-		}(clients[i], txs[index[0]:index[1]])
+			resc <- &receiptMsg{endpoint, nil, r}
+		}(clients[i], nodes[i], txs[index[0]:index[1]])
 	}
 
 	for i := 0; i < cap(resc); i++ {
 		res := <-resc
-		if res == nil {
-			return nil, errors.New("request failed during batch operation")
+		if res.err != nil {
+			return nil, fmt.Errorf("%w: %s (%s)", res.err, res.endpoint, "request failed during batch operation")
 		}
 
-		for k, v := range res {
+		for k, v := range res.res {
 			result[k] = v
 		}
 	}
