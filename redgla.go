@@ -68,8 +68,7 @@ func (r *Redgla) dial(endpoints []string) ([]*ethclient.Client, error) {
 	res := make([]*ethclient.Client, 0, len(endpoints))
 
 	// All of them are dialed and returned even if they are not used.
-	// It's seems OK because no actual communication with the node
-	// takes place.
+	// It's seems OK because no actual communication with the node.
 	for _, endpoint := range endpoints {
 		client, err := ethclient.Dial(endpoint)
 		if err != nil {
