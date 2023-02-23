@@ -94,6 +94,8 @@ func (r *Redgla) Benchmark(height uint64, cnt int) (map[string]time.Duration, er
 	return result, nil
 }
 
+// BlockByRange requests blocks from a range to a node. If more requests
+// than the set threshold are received, an error is returned.
 func (r *Redgla) BlockByRange(start uint64, end uint64) (map[uint64]*types.Block, error) {
 	nodes := r.list.liveNodes()
 	if len(nodes) == 0 {
@@ -112,6 +114,8 @@ func (r *Redgla) BlockByRange(start uint64, end uint64) (map[uint64]*types.Block
 	return blockByNumber(clients[0], start, end, r.cfg.RequestTimeout)
 }
 
+// BlockByRangeWithBatch transmits and receives batch requests to
+// healthy nodes among the list of registered nodes.
 func (r *Redgla) BlockByRangeWithBatch(start uint64, end uint64) (map[uint64]*types.Block, error) {
 	if r.cfg.Threshold >= int(end-start) {
 		return r.BlockByRange(start, end)
@@ -158,6 +162,9 @@ func (r *Redgla) BlockByRangeWithBatch(start uint64, end uint64) (map[uint64]*ty
 	return result, nil
 }
 
+// ReceiptByTxs requests receipts from given transactions to a node. If
+// more requests than the set threshold are received, an error is
+// returned.
 func (r *Redgla) ReceiptByTxs(txs []*types.Transaction) (map[common.Hash]*types.Receipt, error) {
 	nodes := r.list.liveNodes()
 	if len(nodes) == 0 {
@@ -176,6 +183,8 @@ func (r *Redgla) ReceiptByTxs(txs []*types.Transaction) (map[common.Hash]*types.
 	return receiptByTxs(clients[0], txs, r.cfg.RequestTimeout)
 }
 
+// ReceiptByTxsWithBatch transmits and receives batch requests to
+// healthy nodes among the list of registered nodes.
 func (r *Redgla) ReceiptByTxsWithBatch(txs []*types.Transaction) (map[common.Hash]*types.Receipt, error) {
 	if r.cfg.Threshold >= len(txs) {
 		return r.ReceiptByTxs(txs)
