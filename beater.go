@@ -7,6 +7,7 @@ package redgla
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"time"
 
@@ -129,6 +130,50 @@ func (b *beater) beat(endpoints []string) map[string]time.Duration {
 	}
 
 	return m
+}
+
+func (b *beater) add(endpoint string) error {
+	if err := validateEndpoint(endpoint); err != nil {
+		return err
+	}
+
+	for _, node := range b.nodes() {
+		if node == endpoint {
+			return errors.New("already exist")
+		}
+	}
+
+	b.mu.Lock()
+	b.endpoints = append(b.endpoints, endpoint)
+	b.mu.Unlock()
+
+	return nil
+}
+
+func (b *beater) delete(endpoint string) error {
+	if err := validateEndpoint(endpoint); err != nil {
+		return err
+	}
+
+	for i, node := range b.nodes() {
+		if node == endpoint {
+			b.mu.Lock()
+			b.endpoints[i] = b.endpoints[len(b.endpoints)-1]
+			b.endpoints = b.endpoints[:len(b.endpoints)-1]
+			b.mu.Unlock()
+
+			return nil
+		}
+	}
+
+	return errors.New("not exist endpoint")
+}
+
+func (b *beater) nodes() []string {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+
+	return b.endpoints
 }
 
 func (b *beater) liveNodes() []string {
