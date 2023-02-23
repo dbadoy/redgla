@@ -9,6 +9,7 @@ import (
 	"context"
 	"errors"
 	"math/big"
+	"math/rand"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -24,6 +25,73 @@ var (
 type Redgla struct {
 	list *beater
 	cfg  *Config
+}
+
+type benchmarkMsg struct {
+	endpoint string
+	spent    time.Duration
+}
+
+// AddNode adds the target endpoint to the list of batch processing nodes.
+// The endpoint entered will take effect starting from the next
+// HeartbeatInterval.
+func (r *Redgla) AddNode(endpoint string) error {
+	return r.list.add(endpoint)
+}
+
+// DelNode removes the target endpoint from the list of batch processing
+// nodes. Removed endpoints take effect from the next HeartbeatInterval.
+func (r *Redgla) DelNode(endpoint string) error {
+	return r.list.delete(endpoint)
+}
+
+// Benchmark measures and returns the response time of each node.
+//
+// Batch request performance is matched to the speed of the slowest node.
+// Removing nodes that are too slow to respond from the list can help
+// improve performance.
+// This method performs a benchmark for requests to fetch 'cnt' times a
+// random number of block numbers less than 'height.
+func (r *Redgla) Benchmark(height uint64, cnt int) (map[string]time.Duration, error) {
+	nodes := r.list.liveNodes()
+	if len(nodes) == 0 {
+		return nil, ErrNoAliveNode
+	}
+
+	clients, err := r.dial(nodes)
+	if err != nil {
+		return nil, err
+	}
+
+	var (
+		resc   = make(chan *benchmarkMsg, len(nodes))
+		result = make(map[string]time.Duration)
+	)
+
+	for i := 0; i < len(clients); i++ {
+		go func(client *ethclient.Client, endpoint string) {
+			start := time.Now()
+			randBN := rand.Int63n(int64(height-1) + 1)
+			for i := 0; i < cnt; i++ {
+				_, err := client.BlockByNumber(context.Background(), big.NewInt(randBN))
+				if err != nil {
+					resc <- nil
+					return
+				}
+				resc <- &benchmarkMsg{endpoint, time.Since(start)}
+			}
+		}(clients[i], nodes[i])
+	}
+
+	for i := 0; i < cap(resc); i++ {
+		r := <-resc
+		if r == nil {
+			return nil, errors.New("some request failed during benchmark")
+		}
+		result[r.endpoint] = r.spent
+	}
+
+	return result, nil
 }
 
 func (r *Redgla) BlockByRange(start uint64, end uint64) (map[uint64]*types.Block, error) {
