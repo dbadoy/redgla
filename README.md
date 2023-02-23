@@ -3,11 +3,12 @@ Scalable Ethereum Read Requester
 
 <img width="728" alt="image" src="https://user-images.githubusercontent.com/72970043/220929311-99e7b45b-5ca1-4933-b241-d30bee6ff987.png">
 
-# Index
-- Install
-- Usage
-- Scalable
-- Heartbeat
+<b>Table of Contents</b>
+
+- [Install](https://github.com/dbadoy/redgla#install)
+- [Usage](https://github.com/dbadoy/redgla#usage)
+- [Scalable](https://github.com/dbadoy/redgla#scalable)
+- [Heartbeat](https://github.com/dbadoy/redgla#heartbeat)
 
 ## Install
 Required: Go (version 1.16 or later)
