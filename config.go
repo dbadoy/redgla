@@ -14,7 +14,7 @@ import (
 
 const (
 	defaultThreshold         = 100
-	defaultRequestTimeout    = 30 * time.Minute // See Config.RequestTimeout comment
+	defaultRequestTimeout    = 30 * time.Minute // See Config.RequestTimeout comment.
 	defaultHeartbeatInterval = 3 * time.Second
 	defaultHeartbeatTimeout  = time.Second
 )
@@ -45,6 +45,8 @@ type Config struct {
 	HeartbeatTimeout time.Duration
 }
 
+// There is no default value for Endpoints. Set the Endpoints
+// on the created default Config.
 func DefaultConfig() *Config {
 	return &Config{
 		Threshold:         defaultThreshold,
