@@ -185,6 +185,8 @@ func (b *beater) liveNodes() []string {
 		endpoints = append(endpoints, e)
 	}
 
+	// TODO(dbadoy): Sorting by fastest response will probably give a performance
+	// advantage when making a single request.
 	return endpoints
 }
 
