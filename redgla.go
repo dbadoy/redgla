@@ -139,7 +139,7 @@ func (r *Redgla) BlockByRange(start uint64, end uint64) (map[uint64]*types.Block
 		return nil, err
 	}
 
-	return blockByNumber(clients[0], start, end, r.cfg.RequestTimeout)
+	return blockByRange(clients[0], start, end, r.cfg.RequestTimeout)
 }
 
 // BlockByRangeWithBatch transmits and receives batch requests to
@@ -167,7 +167,7 @@ func (r *Redgla) BlockByRangeWithBatch(start uint64, end uint64) (map[uint64]*ty
 	ranges := makeBatchRange(start, end, len(nodes))
 	for i, rg := range ranges {
 		go func(client *ethclient.Client, endpoint string, start uint64, end uint64) {
-			r, err := blockByNumber(client, start, end, r.cfg.RequestTimeout)
+			r, err := blockByRange(client, start, end, r.cfg.RequestTimeout)
 			if err != nil {
 				resc <- &msg{endpoint, err, nil}
 				return
@@ -190,8 +190,8 @@ func (r *Redgla) BlockByRangeWithBatch(start uint64, end uint64) (map[uint64]*ty
 	return result, nil
 }
 
-// TransactionByHash requests transactions from given hashes to a node.
-func (r *Redgla) TransactionByHash(hashes []common.Hash) (map[common.Hash]*types.Transaction, error) {
+// TransactionByHashes requests transactions from given hashes to a node.
+func (r *Redgla) TransactionByHashes(hashes []common.Hash) (map[common.Hash]*types.Transaction, error) {
 	nodes := r.list.liveNodes()
 	if len(nodes) == 0 {
 		return nil, ErrNoAliveNode
@@ -202,14 +202,14 @@ func (r *Redgla) TransactionByHash(hashes []common.Hash) (map[common.Hash]*types
 		return nil, err
 	}
 
-	return transactionsByHash(clients[0], hashes, r.cfg.RequestTimeout)
+	return transactionByHashes(clients[0], hashes, r.cfg.RequestTimeout)
 }
 
-// TransactionByHashWithBatch transmits and receives batch requests to
+// TransactionByHashesWithBatch transmits and receives batch requests to
 // healthy nodes among the list of registered nodes.
-func (r *Redgla) TransactionByHashWithBatch(hashes []common.Hash) (map[common.Hash]*types.Transaction, error) {
+func (r *Redgla) TransactionByHashesWithBatch(hashes []common.Hash) (map[common.Hash]*types.Transaction, error) {
 	if r.cfg.Threshold >= len(hashes) {
-		return r.TransactionByHash(hashes)
+		return r.TransactionByHashes(hashes)
 	}
 
 	nodes := r.list.liveNodes()
@@ -230,7 +230,7 @@ func (r *Redgla) TransactionByHashWithBatch(hashes []common.Hash) (map[common.Ha
 	indices := makeBatchIndex(len(hashes), len(nodes))
 	for i, index := range indices {
 		go func(client *ethclient.Client, endpoint string, hashes []common.Hash) {
-			r, err := transactionsByHash(client, hashes, r.cfg.RequestTimeout)
+			r, err := transactionByHashes(client, hashes, r.cfg.RequestTimeout)
 			if err != nil {
 				resc <- &msg{endpoint, err, nil}
 				return
@@ -332,7 +332,7 @@ func (r *Redgla) dial(endpoints []string) ([]*ethclient.Client, error) {
 	return res, nil
 }
 
-func blockByNumber(client *ethclient.Client, start uint64, end uint64, timeout time.Duration) (res map[uint64]*types.Block, err error) {
+func blockByRange(client *ethclient.Client, start uint64, end uint64, timeout time.Duration) (res map[uint64]*types.Block, err error) {
 	timer := time.NewTimer(timeout)
 	defer timer.Stop()
 
@@ -354,7 +354,7 @@ func blockByNumber(client *ethclient.Client, start uint64, end uint64, timeout t
 	return res, nil
 }
 
-func transactionsByHash(client *ethclient.Client, hashes []common.Hash, timeout time.Duration) (res map[common.Hash]*types.Transaction, err error) {
+func transactionByHashes(client *ethclient.Client, hashes []common.Hash, timeout time.Duration) (res map[common.Hash]*types.Transaction, err error) {
 	timer := time.NewTimer(timeout)
 	defer timer.Stop()
 
