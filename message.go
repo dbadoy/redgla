@@ -8,7 +8,6 @@ import (
 )
 
 // Internal messages.
-// temp
 
 type msg struct {
 	endpoint string
@@ -22,6 +21,10 @@ func (m *msg) benchmarkResponse() time.Duration {
 
 func (m *msg) blockResponse() map[uint64]*types.Block {
 	return m.v.(map[uint64]*types.Block)
+}
+
+func (m *msg) transactionResponse() map[common.Hash]*types.Transaction {
+	return m.v.(map[common.Hash]*types.Transaction)
 }
 
 func (m *msg) receiptResponse() map[common.Hash]*types.Receipt {

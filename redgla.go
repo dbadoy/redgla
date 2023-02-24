@@ -190,6 +190,69 @@ func (r *Redgla) BlockByRangeWithBatch(start uint64, end uint64) (map[uint64]*ty
 	return result, nil
 }
 
+// TransactionByHash requests transactions from given hashes to a node.
+func (r *Redgla) TransactionByHash(hashes []common.Hash) (map[common.Hash]*types.Transaction, error) {
+	nodes := r.list.liveNodes()
+	if len(nodes) == 0 {
+		return nil, ErrNoAliveNode
+	}
+
+	clients, err := r.dial([]string{nodes[0]})
+	if err != nil {
+		return nil, err
+	}
+
+	return transactionsByHash(clients[0], hashes, r.cfg.RequestTimeout)
+}
+
+// TransactionByHashWithBatch transmits and receives batch requests to
+// healthy nodes among the list of registered nodes.
+func (r *Redgla) TransactionByHashWithBatch(hashes []common.Hash) (map[common.Hash]*types.Transaction, error) {
+	if r.cfg.Threshold >= len(hashes) {
+		return r.TransactionByHash(hashes)
+	}
+
+	nodes := r.list.liveNodes()
+	if len(nodes) == 0 {
+		return nil, ErrNoAliveNode
+	}
+
+	clients, err := r.dial(nodes)
+	if err != nil {
+		return nil, err
+	}
+
+	var (
+		resc   = make(chan *msg, len(nodes))
+		result = make(map[common.Hash]*types.Transaction, len(hashes))
+	)
+
+	indices := makeBatchIndex(len(hashes), len(nodes))
+	for i, index := range indices {
+		go func(client *ethclient.Client, endpoint string, hashes []common.Hash) {
+			r, err := transactionsByHash(client, hashes, r.cfg.RequestTimeout)
+			if err != nil {
+				resc <- &msg{endpoint, err, nil}
+				return
+			}
+			resc <- &msg{endpoint, nil, r}
+		}(clients[i], nodes[i], hashes[index[0]:index[1]])
+	}
+
+	for i := 0; i < cap(resc); i++ {
+		res := <-resc
+		if res.err != nil {
+			return nil, fmt.Errorf("%w: %s (%s)", res.err, res.endpoint, "request failed during batch operation")
+		}
+
+		for k, v := range res.transactionResponse() {
+			result[k] = v
+		}
+	}
+
+	return result, nil
+}
+
 // ReceiptByTxs requests receipts from given transactions to a node.
 func (r *Redgla) ReceiptByTxs(txs []*types.Transaction) (map[common.Hash]*types.Receipt, error) {
 	nodes := r.list.liveNodes()
@@ -283,6 +346,28 @@ func blockByNumber(client *ethclient.Client, start uint64, end uint64, timeout t
 		}
 
 		res[start], err = client.BlockByNumber(context.Background(), big.NewInt(int64(start)))
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return res, nil
+}
+
+func transactionsByHash(client *ethclient.Client, hashes []common.Hash, timeout time.Duration) (res map[common.Hash]*types.Transaction, err error) {
+	timer := time.NewTimer(timeout)
+	defer timer.Stop()
+
+	res = make(map[common.Hash]*types.Transaction, len(hashes))
+
+	for _, hash := range hashes {
+		select {
+		case <-timer.C:
+			return nil, errors.New("timeout")
+		default:
+		}
+
+		res[hash], _, err = client.TransactionByHash(context.Background(), hash)
 		if err != nil {
 			return nil, err
 		}
