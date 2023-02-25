@@ -63,7 +63,7 @@ func (c *Config) validate() error {
 	}
 
 	for _, endpoint := range c.Endpoints {
-		if err := validateEndpoint(endpoint); err != nil {
+		if err := isValidEndpoint(endpoint); err != nil {
 			return err
 		}
 	}
@@ -83,7 +83,7 @@ func (c *Config) validate() error {
 	return nil
 }
 
-func validateEndpoint(endpoint string) error {
+func isValidEndpoint(endpoint string) error {
 	url, err := url.ParseRequestURI(endpoint)
 	if err != nil {
 		return fmt.Errorf("%s: %w", endpoint, errInvalidEndpoint)

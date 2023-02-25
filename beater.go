@@ -58,7 +58,7 @@ type message struct {
 
 func newBeater(name string, endpoints []string, fn HeartbeatFn, interval, timeout time.Duration) (*beater, error) {
 	for _, endpoint := range endpoints {
-		if err := validateEndpoint(endpoint); err != nil {
+		if err := isValidEndpoint(endpoint); err != nil {
 			return nil, err
 		}
 	}
@@ -133,7 +133,7 @@ func (b *beater) beat(endpoints []string) map[string]time.Duration {
 }
 
 func (b *beater) add(endpoint string) error {
-	if err := validateEndpoint(endpoint); err != nil {
+	if err := isValidEndpoint(endpoint); err != nil {
 		return err
 	}
 
@@ -151,7 +151,7 @@ func (b *beater) add(endpoint string) error {
 }
 
 func (b *beater) delete(endpoint string) error {
-	if err := validateEndpoint(endpoint); err != nil {
+	if err := isValidEndpoint(endpoint); err != nil {
 		return err
 	}
 
