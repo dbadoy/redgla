@@ -333,19 +333,13 @@ func (r *Redgla) dial(endpoints []string) ([]*ethclient.Client, error) {
 }
 
 func blockByRange(client *ethclient.Client, start uint64, end uint64, timeout time.Duration) (res map[uint64]*types.Block, err error) {
-	timer := time.NewTimer(timeout)
-	defer timer.Stop()
-
 	res = make(map[uint64]*types.Block, end-start)
 
-	for ; start <= end; start++ {
-		select {
-		case <-timer.C:
-			return nil, errors.New("timeout")
-		default:
-		}
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
 
-		res[start], err = client.BlockByNumber(context.Background(), big.NewInt(int64(start)))
+	for ; start <= end; start++ {
+		res[start], err = client.BlockByNumber(ctx, big.NewInt(int64(start)))
 		if err != nil {
 			return nil, err
 		}
@@ -355,19 +349,13 @@ func blockByRange(client *ethclient.Client, start uint64, end uint64, timeout ti
 }
 
 func transactionByHashes(client *ethclient.Client, hashes []common.Hash, timeout time.Duration) (res map[common.Hash]*types.Transaction, err error) {
-	timer := time.NewTimer(timeout)
-	defer timer.Stop()
-
 	res = make(map[common.Hash]*types.Transaction, len(hashes))
 
-	for _, hash := range hashes {
-		select {
-		case <-timer.C:
-			return nil, errors.New("timeout")
-		default:
-		}
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
 
-		res[hash], _, err = client.TransactionByHash(context.Background(), hash)
+	for _, hash := range hashes {
+		res[hash], _, err = client.TransactionByHash(ctx, hash)
 		if err != nil {
 			return nil, err
 		}
@@ -377,19 +365,13 @@ func transactionByHashes(client *ethclient.Client, hashes []common.Hash, timeout
 }
 
 func receiptByTxs(client *ethclient.Client, txs []*types.Transaction, timeout time.Duration) (res map[common.Hash]*types.Receipt, err error) {
-	timer := time.NewTimer(timeout)
-	defer timer.Stop()
-
 	res = make(map[common.Hash]*types.Receipt, len(txs))
 
-	for _, tx := range txs {
-		select {
-		case <-timer.C:
-			return nil, errors.New("timeout")
-		default:
-		}
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
 
-		res[tx.Hash()], err = client.TransactionReceipt(context.Background(), tx.Hash())
+	for _, tx := range txs {
+		res[tx.Hash()], err = client.TransactionReceipt(ctx, tx.Hash())
 		if err != nil {
 			return nil, err
 		}
