@@ -104,6 +104,9 @@ func (r *Redgla) Benchmark(height uint64, cnt int) (map[string]time.Duration, er
 	for i := 0; i < len(clients); i++ {
 		go func(client *ethclient.Client, endpoint string) {
 			start := time.Now()
+			// Requesting for the same block number results in a faster
+			// response time (it seems to be cached), so we ask for a
+			// random number.
 			randBN := rand.Int63n(int64(height-1) + 1)
 			for i := 0; i < cnt; i++ {
 				_, err := client.BlockByNumber(context.Background(), big.NewInt(randBN))
