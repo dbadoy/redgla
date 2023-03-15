@@ -23,6 +23,8 @@ var (
 	errInvalidEndpoint = errors.New("invalid endpoint")
 	errInvalidInterval = errors.New("invalid heartbeat interval")
 	errInvalidTimeout  = errors.New("invalid timeout")
+
+	errWebsocketNotSupported = errors.New("websocket not supported")
 )
 
 type Config struct {
@@ -94,7 +96,7 @@ func isValidEndpoint(endpoint string) error {
 	//
 	// Restrict before supporting it.
 	if url.Scheme == "ws" || url.Scheme == "wss" {
-		return errors.New("websockets are currently not supported")
+		return errWebsocketNotSupported
 	}
 
 	return nil

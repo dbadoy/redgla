@@ -36,6 +36,7 @@ func TestConfigValidation(t *testing.T) {
 			&Config{
 				Endpoints:         []string{"http://127.0.0.1:3821"},
 				Threshold:         1,
+				RequestTimeout:    defaultRequestTimeout,
 				HeartbeatInterval: time.Second,
 				HeartbeatTimeout:  time.Second,
 			},
@@ -45,6 +46,7 @@ func TestConfigValidation(t *testing.T) {
 			&Config{
 				Endpoints:         []string{"http://127.0.0.1:3821"},
 				Threshold:         100,
+				RequestTimeout:    defaultRequestTimeout,
 				HeartbeatInterval: 0,
 				HeartbeatTimeout:  time.Second,
 			},
@@ -54,6 +56,7 @@ func TestConfigValidation(t *testing.T) {
 			&Config{
 				Endpoints:         []string{"http://127.0.0.1:3821"},
 				Threshold:         100,
+				RequestTimeout:    defaultRequestTimeout,
 				HeartbeatInterval: time.Second,
 				HeartbeatTimeout:  0,
 			},
@@ -63,6 +66,7 @@ func TestConfigValidation(t *testing.T) {
 			&Config{
 				Endpoints:         nil,
 				Threshold:         100,
+				RequestTimeout:    defaultRequestTimeout,
 				HeartbeatInterval: time.Second,
 				HeartbeatTimeout:  time.Second,
 			},
@@ -72,10 +76,31 @@ func TestConfigValidation(t *testing.T) {
 			&Config{
 				Endpoints:         []string{"http://127.0.0.1:3821", "dbadoy"},
 				Threshold:         100,
+				RequestTimeout:    defaultRequestTimeout,
 				HeartbeatInterval: time.Second,
 				HeartbeatTimeout:  time.Second,
 			},
 			errInvalidEndpoint,
+		},
+		{
+			&Config{
+				Endpoints:         []string{"http://127.0.0.1:3821"},
+				Threshold:         100,
+				RequestTimeout:    0,
+				HeartbeatInterval: time.Second,
+				HeartbeatTimeout:  time.Second,
+			},
+			errInvalidTimeout,
+		},
+		{
+			&Config{
+				Endpoints:         []string{"ws://127.0.0.1:3821"},
+				Threshold:         100,
+				RequestTimeout:    defaultRequestTimeout,
+				HeartbeatInterval: time.Second,
+				HeartbeatTimeout:  time.Second,
+			},
+			errWebsocketNotSupported,
 		},
 	}
 
