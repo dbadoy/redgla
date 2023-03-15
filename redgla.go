@@ -343,7 +343,7 @@ func (r *Redgla) dial(endpoints []string) ([]*ethclient.Client, error) {
 }
 
 // stop: A Channel that stops all goroutine execution if any of the
-// 		 batch requests fail. If the stop logic of the goroutine is
+//       batch requests fail. If the stop logic of the goroutine is
 //       not required, it is nil (i.e. a single request).
 
 func blockByRange(client *ethclient.Client, start uint64, end uint64, timeout time.Duration, stop chan struct{}) (res map[uint64]*types.Block, err error) {
