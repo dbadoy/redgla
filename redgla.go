@@ -169,7 +169,6 @@ func (r *Redgla) BlockByRangeWithBatch(start uint64, end uint64) (map[uint64]*ty
 	)
 
 	stop := make(chan struct{})
-
 	ranges := makeBatchRange(start, end, len(nodes))
 	for i, rg := range ranges {
 		go func(client *ethclient.Client, endpoint string, start uint64, end uint64) {
