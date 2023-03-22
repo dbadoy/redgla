@@ -20,7 +20,8 @@ import (
 )
 
 var (
-	ErrNoAliveNode = errors.New("there is no alive node")
+	ErrNoAliveNode  = errors.New("there is no alive node")
+	ErrBatchFailure = errors.New("batch request failure")
 )
 
 type Redgla struct {
@@ -142,7 +143,7 @@ func (r *Redgla) BlockByRange(start uint64, end uint64) (map[uint64]*types.Block
 		return nil, err
 	}
 
-	return blockByRange(clients[0], start, end, r.cfg.RequestTimeout)
+	return blockByRange(clients[0], start, end, r.cfg.RequestTimeout, nil)
 }
 
 // BlockByRangeWithBatch transmits and receives batch requests to
@@ -167,10 +168,11 @@ func (r *Redgla) BlockByRangeWithBatch(start uint64, end uint64) (map[uint64]*ty
 		result = make(map[uint64]*types.Block, end-start)
 	)
 
+	quit := make(chan struct{})
 	ranges := makeBatchRange(start, end, len(nodes))
 	for i, rg := range ranges {
 		go func(client *ethclient.Client, endpoint string, start uint64, end uint64) {
-			r, err := blockByRange(client, start, end, r.cfg.RequestTimeout)
+			r, err := blockByRange(client, start, end, r.cfg.RequestTimeout, quit)
 			if err != nil {
 				resc <- &msg{endpoint, err, nil}
 				return
@@ -182,6 +184,7 @@ func (r *Redgla) BlockByRangeWithBatch(start uint64, end uint64) (map[uint64]*ty
 	for i := 0; i < cap(resc); i++ {
 		res := <-resc
 		if res.err != nil {
+			close(quit)
 			return nil, fmt.Errorf("%w: %s (%s)", res.err, res.endpoint, "request failed during batch operation")
 		}
 
@@ -205,7 +208,7 @@ func (r *Redgla) TransactionByHashes(hashes []common.Hash) (map[common.Hash]*typ
 		return nil, err
 	}
 
-	return transactionByHashes(clients[0], hashes, r.cfg.RequestTimeout)
+	return transactionByHashes(clients[0], hashes, r.cfg.RequestTimeout, nil)
 }
 
 // TransactionByHashesWithBatch transmits and receives batch requests to
@@ -230,10 +233,11 @@ func (r *Redgla) TransactionByHashesWithBatch(hashes []common.Hash) (map[common.
 		result = make(map[common.Hash]*types.Transaction, len(hashes))
 	)
 
+	quit := make(chan struct{})
 	indices := makeBatchIndex(len(hashes), len(nodes))
 	for i, index := range indices {
 		go func(client *ethclient.Client, endpoint string, hashes []common.Hash) {
-			r, err := transactionByHashes(client, hashes, r.cfg.RequestTimeout)
+			r, err := transactionByHashes(client, hashes, r.cfg.RequestTimeout, quit)
 			if err != nil {
 				resc <- &msg{endpoint, err, nil}
 				return
@@ -245,6 +249,7 @@ func (r *Redgla) TransactionByHashesWithBatch(hashes []common.Hash) (map[common.
 	for i := 0; i < cap(resc); i++ {
 		res := <-resc
 		if res.err != nil {
+			close(quit)
 			return nil, fmt.Errorf("%w: %s (%s)", res.err, res.endpoint, "request failed during batch operation")
 		}
 
@@ -268,7 +273,7 @@ func (r *Redgla) ReceiptByTxs(txs []*types.Transaction) (map[common.Hash]*types.
 		return nil, err
 	}
 
-	return receiptByTxs(clients[0], txs, r.cfg.RequestTimeout)
+	return receiptByTxs(clients[0], txs, r.cfg.RequestTimeout, nil)
 }
 
 // ReceiptByTxsWithBatch transmits and receives batch requests to
@@ -293,10 +298,11 @@ func (r *Redgla) ReceiptByTxsWithBatch(txs []*types.Transaction) (map[common.Has
 		result = make(map[common.Hash]*types.Receipt, len(txs))
 	)
 
+	quit := make(chan struct{})
 	indices := makeBatchIndex(len(txs), len(nodes))
 	for i, index := range indices {
 		go func(client *ethclient.Client, endpoint string, txs []*types.Transaction) {
-			r, err := receiptByTxs(client, txs, r.cfg.RequestTimeout)
+			r, err := receiptByTxs(client, txs, r.cfg.RequestTimeout, quit)
 			if err != nil {
 				resc <- &msg{endpoint, err, nil}
 				return
@@ -308,6 +314,7 @@ func (r *Redgla) ReceiptByTxsWithBatch(txs []*types.Transaction) (map[common.Has
 	for i := 0; i < cap(resc); i++ {
 		res := <-resc
 		if res.err != nil {
+			close(quit)
 			return nil, fmt.Errorf("%w: %s (%s)", res.err, res.endpoint, "request failed during batch operation")
 		}
 
@@ -335,13 +342,29 @@ func (r *Redgla) dial(endpoints []string) ([]*ethclient.Client, error) {
 	return res, nil
 }
 
-func blockByRange(client *ethclient.Client, start uint64, end uint64, timeout time.Duration) (res map[uint64]*types.Block, err error) {
+// quit: A Channel that stops all goroutine execution if any of the
+//       batch requests fail. If the stop logic of the goroutine is
+//       not required, it is nil (i.e. a single request).
+
+func blockByRange(client *ethclient.Client, start uint64, end uint64, timeout time.Duration, quit chan struct{}) (res map[uint64]*types.Block, err error) {
 	res = make(map[uint64]*types.Block, end-start)
+
+	if quit == nil {
+		quit = make(chan struct{})
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
 	for ; start <= end; start++ {
+		select {
+		case _, ok := <-quit:
+			if !ok {
+				return nil, ErrBatchFailure
+			}
+		default:
+		}
+
 		res[start], err = client.BlockByNumber(ctx, big.NewInt(int64(start)))
 		if err != nil {
 			return nil, err
@@ -351,13 +374,25 @@ func blockByRange(client *ethclient.Client, start uint64, end uint64, timeout ti
 	return res, nil
 }
 
-func transactionByHashes(client *ethclient.Client, hashes []common.Hash, timeout time.Duration) (res map[common.Hash]*types.Transaction, err error) {
+func transactionByHashes(client *ethclient.Client, hashes []common.Hash, timeout time.Duration, quit chan struct{}) (res map[common.Hash]*types.Transaction, err error) {
 	res = make(map[common.Hash]*types.Transaction, len(hashes))
+
+	if quit == nil {
+		quit = make(chan struct{})
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
 	for _, hash := range hashes {
+		select {
+		case _, ok := <-quit:
+			if !ok {
+				return nil, ErrBatchFailure
+			}
+		default:
+		}
+
 		res[hash], _, err = client.TransactionByHash(ctx, hash)
 		if err != nil {
 			return nil, err
@@ -367,13 +402,25 @@ func transactionByHashes(client *ethclient.Client, hashes []common.Hash, timeout
 	return res, nil
 }
 
-func receiptByTxs(client *ethclient.Client, txs []*types.Transaction, timeout time.Duration) (res map[common.Hash]*types.Receipt, err error) {
+func receiptByTxs(client *ethclient.Client, txs []*types.Transaction, timeout time.Duration, quit chan struct{}) (res map[common.Hash]*types.Receipt, err error) {
 	res = make(map[common.Hash]*types.Receipt, len(txs))
+
+	if quit == nil {
+		quit = make(chan struct{})
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
 	for _, tx := range txs {
+		select {
+		case _, ok := <-quit:
+			if !ok {
+				return nil, ErrBatchFailure
+			}
+		default:
+		}
+
 		res[tx.Hash()], err = client.TransactionReceipt(ctx, tx.Hash())
 		if err != nil {
 			return nil, err
