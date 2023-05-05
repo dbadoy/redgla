@@ -17,6 +17,7 @@ func (p *priorityQueue) add(key string, spent time.Duration) {
 	heap.Push(p, item{key, spent})
 }
 
+// keys does not return a sorted result.
 func (p priorityQueue) keys() (res []string) {
 	res = make([]string, 0, len(p))
 	for _, item := range p {
