@@ -164,8 +164,8 @@ func (b *beater) delete(endpoint string) error {
 	}
 
 	for i, node := range b.nodes() {
-		// We don't need to delete the node and remove the
-		// 'b.members' right away; add/delete nodes means
+		// We don't need to delete a node and remove it
+		// from 'b.members'; add/delete nodes means
 		// applying them in the next 'p.beat'.
 		if node == endpoint {
 			b.mu.Lock()
