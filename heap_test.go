@@ -16,7 +16,7 @@ func TestPriorityQueue(t *testing.T) {
 		exptimeD = time.Duration(15 * time.Second)
 		exptimeE = time.Duration(1 * time.Second)
 
-		wants = []string{"e", "a", "b", "c", "d"}
+		want = []string{"e", "a", "b", "c", "d"}
 	)
 
 	p.add("b", exptimeB)
@@ -26,10 +26,10 @@ func TestPriorityQueue(t *testing.T) {
 	p.add("e", exptimeE)
 
 	heap.Init(&p)
-	for _, want := range wants {
+	for _, expect := range want {
 		res := heap.Pop(&p).(item)
-		if res.key != want {
-			t.Fatalf("TestPriorityQueue: want %v got %v", want, res.key)
+		if res.key != expect {
+			t.Fatalf("TestPriorityQueue: want %v got %v", expect, res.key)
 		}
 	}
 }
