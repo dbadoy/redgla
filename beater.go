@@ -40,8 +40,8 @@ type beater struct {
 
 	mu sync.RWMutex
 
-	// Mapping 'member' to 'spent time'; for excluding too slow works nodes.
-	members map[string]time.Duration
+	// Sort the members in order of fastest response time.
+	members priorityQueue
 
 	quit chan struct{}
 
@@ -79,7 +79,7 @@ func (b *beater) run() {
 
 func (b *beater) stop() {
 	b.quit <- struct{}{}
-	b.members = make(map[string]time.Duration)
+	b.members = make(priorityQueue, 0)
 }
 
 func (b *beater) loop() {
@@ -89,10 +89,18 @@ func (b *beater) loop() {
 	for {
 		select {
 		case <-timer.C:
-			members := b.beat(b.endpoints)
+			var (
+				result = b.beat(b.endpoints)
+				heap   = make(priorityQueue, 0)
+			)
+
+			for member, spent := range result {
+				heap.add(member, spent)
+			}
 
 			b.mu.Lock()
-			b.members = members
+			// TODO(dbadoy): We need to find a better way than reallocating every time.
+			b.members = heap
 			b.mu.Unlock()
 
 			timer.Reset(b.interval)
@@ -156,6 +164,9 @@ func (b *beater) delete(endpoint string) error {
 	}
 
 	for i, node := range b.nodes() {
+		// We don't need to delete the node and remove the
+		// 'b.members' right away; add/delete nodes means
+		// applying them in the next 'p.beat'.
 		if node == endpoint {
 			b.mu.Lock()
 			b.endpoints[i] = b.endpoints[len(b.endpoints)-1]
@@ -176,23 +187,12 @@ func (b *beater) nodes() []string {
 	return b.endpoints
 }
 
+// The result isn't fully sorted, but it's clear that
+// the first value is the highest priority. What we
+// want is the fastest first item, so we just use it.
 func (b *beater) liveNodes() []string {
 	b.mu.RLock()
 	defer b.mu.RUnlock()
 
-	endpoints := make([]string, 0, len(b.members))
-	for e := range b.members {
-		endpoints = append(endpoints, e)
-	}
-
-	// TODO(dbadoy): Sorting by fastest response will probably give a performance
-	// advantage when making a single request.
-	return endpoints
-}
-
-func (b *beater) liveNodesWithSpentTime() map[string]time.Duration {
-	b.mu.RLock()
-	defer b.mu.RUnlock()
-
-	return b.members
+	return b.members.keys()
 }
