@@ -41,6 +41,8 @@ type beater struct {
 	mu sync.RWMutex
 
 	// Sort the members in order of fastest response time.
+	//
+	// https://github.com/dbadoy/redgla/pull/3
 	members priorityQueue
 
 	quit chan struct{}
